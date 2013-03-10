@@ -1,0 +1,2 @@
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ((\d+)x(\d+))/(.+\.jpg)$ /index.php/imageresize/resize/$1/$4
