@@ -3,8 +3,8 @@
 class MalformedParamError extends Exception {}
 
 class FileSystemError     extends Exception       {}
-class DirectoryCreatError extends FileSystemError {}
 class FSAccessError       extends FileSystemError {}
+class DirectoryCreatError extends FSAccessError   {}
 class FewPermissionError  extends FSAccessError   {}
 class FileNotExistsError  extends FSAccessError   {}
 
@@ -54,8 +54,7 @@ class Imageresize extends Controller {
     $dir_exists = file_exists($dir) && is_dir($dir);
 
     if (!$dir_exists && !mkdir($dir, 0755, TRUE)) {
-      $msg = "can't prepare cache direcotory \"$dir\"";
-      log_message('error', $msg);
+      $msg = "can't create cache direcotory \"$dir\"";
       throw new DirectoryCreatError($msg);
     }
   }
@@ -67,7 +66,6 @@ class Imageresize extends Controller {
 
     if (!is_readable($filepath)) {
       $msg = "can't open \"$filepath\" for read";
-      log_message('warning', $msg);
       throw new FewPermissionError($msg);
     }
   }
@@ -94,7 +92,7 @@ class Imageresize extends Controller {
     redirect($url);
   }
 
-  public function resize($WxH, $filename) {
+  private function _resizeImpl($WxH, $filename) {
     $WxH    = $this->_parseWxHStr($WxH);
     $width  = $WxH[0];
     $height = $WxH[1];
@@ -120,6 +118,27 @@ class Imageresize extends Controller {
     );
 
     $this->_redirectToCachedImage($filename, $width, $height);
+  }
+
+  private static function _logError($exception) {
+    log_message('error', $exception->getMessage());
+  }
+
+  public function resize($WxH, $filename) {
+    try {
+      try {
+        return $this->_resizeImpl($WxH, $filename);
+      } catch (Exception $e) {
+        $this->_logError($e);
+        throw $e;
+      }
+    } catch (MalformedParamError $e) {
+      show_error($e->getMessage(), 400);
+    } catch (FSAccessError $e) {
+      show_error($e->getMessage(), 403);
+    } catch (Exception $e) {
+      show_error($e->getMessage());
+    }
   }
 }
 

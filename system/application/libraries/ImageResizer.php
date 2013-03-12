@@ -27,7 +27,7 @@ class Point {
 }
 
 class Rectangle {
-  private $upperLeftPoint; // upper-left point
+  private $upperLeftPoint;
   private $size;
 
   public function __construct($upperLeftPoint, $size) {
