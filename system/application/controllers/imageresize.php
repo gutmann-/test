@@ -6,7 +6,9 @@ class FileSystemError     extends Exception       {}
 class FSAccessError       extends FileSystemError {}
 class DirectoryCreatError extends FSAccessError   {}
 class FewPermissionError  extends FSAccessError   {}
-class FileNotExistsError  extends FSAccessError   {}
+
+class FSObjectExistanceError extends FileSystemError        {}
+class FileNotExistsError     extends FSObjectExistanceError {}
 
 class Imageresize extends Controller {
   private static function _fpathConcat($dir, $filename) {
@@ -61,7 +63,8 @@ class Imageresize extends Controller {
 
   private static function _assertExistanceAndAccessibility($filepath) {
     if (!file_exists($filepath)) {
-      throw new FileNotExistsError($filepath);
+      $msg = "file \"${filepath}\" not found";
+      throw new FileNotExistsError($msg);
     }
 
     if (!is_readable($filepath)) {
@@ -134,6 +137,8 @@ class Imageresize extends Controller {
       }
     } catch (MalformedParamError $e) {
       show_error($e->getMessage(), 400);
+    } catch (FSObjectExistanceError $e) {
+      show_error($e->getMessage(), 404);
     } catch (FSAccessError $e) {
       show_error($e->getMessage(), 403);
     } catch (Exception $e) {
