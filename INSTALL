@@ -1,0 +1,16 @@
+========================== INSTALLATION ===================================
+1. Install CodeIgnighter
+   (http://ellislab.com/codeigniter/user-guide/installation/index.html)
+2. Execute `cp -r * ${CODE_IGNIGHTER_APP_ROOT}` where $CODE_IGNIGHTER_APP_ROOT
+   is your CodeIgnighter application root.
+3. Make sure that images directory (see 'srcdir' param in imageresizer.php
+   config) exists.
+
+=========================== УСТАНОВКА =====================================
+1. Установите CodeIgnighter
+   (http://ellislab.com/codeigniter/user-guide/installation/index.html)
+2. Выполните `cp -r * ${CODE_IGNIGHTER_APP_ROOT}` где
+   $CODE_IGNIGHTER_APP_ROOT --- корень вашего приложения.
+3. Убедитесь, что директория с исходными изображениями существует
+   (см. параметр 'srcdir' в конфигурационном файле imageresizer.php)
+
