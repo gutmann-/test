@@ -1,5 +1,13 @@
 <?php
 
+class MalformedParamError extends Exception {}
+
+class FileSystemError     extends Exception       {}
+class DirectoryCreatError extends FileSystemError {}
+class FSAccessError       extends FileSystemError {}
+class FewPermissionError  extends FSAccessError   {}
+class FileNotExistsError  extends FSAccessError   {}
+
 class Imageresize extends Controller {
   private static function _fpathConcat($dir, $filename) {
     $RELATIVE = 0;
@@ -31,8 +39,8 @@ class Imageresize extends Controller {
   private function _parseWxHStr($WxHStr) {
     $matches = NULL;
     if(!preg_match("/(\d+)x(\d+)/", $WxHStr, $matches)) {
-      show_error("bad width or/and height \"$WxHStr\"", 400);
-      return NULL;
+      $msg = "bad width or/and height \"$WxHStr\"";
+      throw new MalformedParamError($msg, 400);
     }
 
     $width  = (int)$matches[1];
@@ -48,30 +56,42 @@ class Imageresize extends Controller {
     if (!$dir_exists && !mkdir($dir, 0755, TRUE)) {
       $msg = "can't prepare cache direcotory \"$dir\"";
       log_message('error', $msg);
-      show_error($msg);
+      throw new DirectoryCreatError($msg);
     }
   }
 
-  private static function _checkFilesPermissions($test_for_read, $test_for_write) {
-    if (isset($test_for_read)) {
-      if (!is_readable($test_for_read)) {
-        $msg = "can't open \"$test_for_read\" for read";
-        log_message('warning', $msg);
-        show_error($msg);
-      }
+  private static function _assertExistanceAndAccessibility($filepath) {
+    if (!file_exists($filepath)) {
+      throw new FileNotExistsError($filepath);
     }
 
-    if (isset($test_for_write)) {
-      if (!is_writable($test_for_write)) {
-        $msg = "can't open \"$test_for_write\" for write";
-        log_message('warning', $msg);
-        show_error($msg);
-      }
+    if (!is_readable($filepath)) {
+      $msg = "can't open \"$filepath\" for read";
+      log_message('warning', $msg);
+      throw new FewPermissionError($msg);
     }
   }
 
-  public function index() {
-    echo 'index';
+  private function _doResizing($src, $dst, $w, $h) {
+    $this->load->library('ImageResizer');
+
+    $resizer = $this->imageresizer;
+    $resizer->setWidth($w);
+    $resizer->setHeight($h);
+    $resizer->setSourceFilename($src);
+    $resizer->setTargetFilename($dst);
+
+    $resizer->process();
+  }
+
+  private function _redirectToCachedImage($filename, $W, $H) {
+    $this->load->helper('url');
+
+    $cachedir    = $this->config->item('cachedir', 'imageresizer');
+    $server_name = $this->input->server("SERVER_NAME");
+
+    $url = "http://${server_name}/${cachedir}/${W}x${H}/${filename}";
+    redirect($url);
   }
 
   public function resize($WxH, $filename) {
@@ -79,30 +99,27 @@ class Imageresize extends Controller {
     $width  = $WxH[0];
     $height = $WxH[1];
 
-    $this->load->library('ImageResizer');
     $this->config->load('imageresizer', TRUE);
 
     $srcdir   = $this->config->item('srcdir',   'imageresizer');
     $cachedir = $this->config->item('cachedir', 'imageresizer');
 
-    $src_filename     = self::_fpathConcat($srcdir, $filename);
+    $src_filename     = $this->_fpathConcat($srcdir, $filename);
     $resized_filename =
       $this->_cachedfnameForImageWxH($cachedir, $filename, $width, $height);
 
-    $this->_checkFilesPermissions($src_filename, NULL);
+    $this->_assertExistanceAndAccessibility($src_filename);
     $this->_prepareCacheForFile($resized_filename);
 
-    $resizer = $this->imageresizer;
-    $resizer->setWidth($width);
-    $resizer->setHeight($height);
-    $resizer->setSourceFilename($src_filename);
-    $resizer->setTargetFilename($resized_filename);
+    $this->_doResizing
+    (
+      $src_filename,
+      $resized_filename,
+      $width,
+      $height
+    );
 
-    $resizer->process();
-
-    //TODO: impelment rest of code.
-    var_dump($src_filename);
-    var_dump($resized_filename);
+    $this->_redirectToCachedImage($filename, $width, $height);
   }
 }
 
